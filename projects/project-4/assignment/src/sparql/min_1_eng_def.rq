@@ -5,3 +5,52 @@
 # Severity:
 #     Warning
 
+#!/usr/bin/env python3
+"""
+check_definition_required_classes_props_warn.py
+Warn if classes or object properties lack an english rdfs:comment / IAO definition / skos:definition.
+Exits 0 but prints warnings.
+"""
+import sys
+from rdflib import Graph, RDF, RDFS, OWL, URIRef, Literal
+
+DEFPROPS = [
+    RDFS.comment,
+    URIRef("http://purl.obolibrary.org/obo/IAO_0000115"),
+    URIRef("http://www.w3.org/2004/02/skos/core#definition"),
+    URIRef("http://purl.org/dc/terms/description"),
+]
+
+def has_en_def(g, subj):
+    for p in DEFPROPS:
+        for o in g.objects(subj, p):
+            if isinstance(o, Literal) and (o.language == 'en' or (o.language is None and 'en' in str(o))):
+                # require non-empty after strip
+                if str(o).strip():
+                    return True
+    return False
+
+def main(path):
+    g = Graph()
+    g.parse(path)
+    warnings = []
+    # classes: rdf:type owl:Class or rdfs:Class
+    classes = set(g.subjects(RDF.type, OWL.Class)) | set(g.subjects(RDF.type, RDFS.Class))
+    # object properties: rdf:type owl:ObjectProperty
+    objprops = set(g.subjects(RDF.type, OWL.ObjectProperty))
+    for c in classes | objprops:
+        if not has_en_def(g, c):
+            warnings.append(c)
+    if warnings:
+        print("WARNING: The following classes or object properties lack an English definition (rdfs:comment/IAO/skos/dct):")
+        for w in sorted(map(str, warnings)):
+            print(" -", w)
+    else:
+        print("PASS: All classes and object properties have an English definition.")
+    sys.exit(0)
+
+if __name__ == "__main__":
+    if len(sys.argv) != 2:
+        print("Usage: python check_definition_required_classes_props_warn.py <ontology-file>")
+        sys.exit(2)
+    main(sys.argv[1])

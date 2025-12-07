@@ -4,3 +4,66 @@
 #    No class definition should be self-referential. 
 # Severity:  
 #    Error
+
+#!/usr/bin/env python3
+"""
+check_ontology_self_referential_definition.py
+
+ERROR if the ontology's definition (IAO:0000115 or rdfs:comment)
+contains a reference to its own ontology IRI.
+
+Ontology node is any subject with:
+    rdf:type owl:Ontology
+"""
+import sys
+from rdflib import Graph, RDF, RDFS, Literal
+from rdflib.namespace import OWL
+
+# Common definition properties
+IAO_DEF = "http://purl.obolibrary.org/obo/IAO_0000115"
+
+def main(path):
+    g = Graph()
+    g.parse(path)
+
+    # Identify ontology IRIs
+    ontology_nodes = set(g.subjects(RDF.type, OWL.Ontology))
+    if not ontology_nodes:
+        print("ERROR: No ontology node found (missing rdf:type owl:Ontology).")
+        sys.exit(1)
+
+    offending = []
+
+    for ont in ontology_nodes:
+        ont_iri = str(ont)
+
+        # Fetch definitions via IAO:0000115 and rdfs:comment
+        definitions = list(g.objects(ont, URIRef(IAO_DEF)))
+        definitions += list(g.objects(ont, RDFS.comment))
+
+        for d in definitions:
+            if isinstance(d, Literal):
+                text = str(d)
+                if ont_iri in text:
+                    offending.append((ont, text))
+
+    if offending:
+        print("ERROR: Ontology definition is self-referential.\n")
+        for ont, text in offending:
+            print(f"Ontology IRI: {ont}")
+            print("Definition containing IRI:")
+            print(text)
+            print("-" * 70)
+        sys.exit(1)
+
+    print("PASS: Ontology definition does not refer to itself.")
+    sys.exit(0)
+
+
+if __name__ == "__main__":
+    from rdflib import URIRef
+    if len(sys.argv) != 2:
+        print("Usage: python check_ontology_self_referential_definition.py <ontology.ttl>")
+        sys.exit(2)
+
+    main(sys.argv[1])

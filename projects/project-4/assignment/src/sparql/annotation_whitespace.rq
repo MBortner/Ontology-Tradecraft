@@ -4,3 +4,42 @@
 #    No annotation value may have leading or trailing whitespace.    
 # Severity:
 #    Error 
+
+#!/usr/bin/env python3
+"""
+check_no_extra_annotation_whitespace.py
+Error if any rdfs:label, rdfs:comment, skos:definition, or IAO definition has leading/trailing whitespace.
+"""
+import sys
+from rdflib import Graph, Namespace, RDF, RDFS, URIRef, Literal
+
+DEFPROPS = [
+    RDFS.label,
+    RDFS.comment,
+    URIRef("http://purl.obolibrary.org/obo/IAO_0000115"),
+    URIRef("http://www.w3.org/2004/02/skos/core#definition"),
+    URIRef("http://purl.org/dc/terms/description"),
+]
+
+def main(path):
+    g = Graph()
+    g.parse(path)
+    errors = []
+    for s, p, o in g.triples((None, None, None)):
+        if p in DEFPROPS and isinstance(o, Literal) and o.datatype in (None,):
+            text = str(o)
+            if text != text.strip():
+                errors.append((s, p, text))
+    if errors:
+        print("ERROR: Found annotation values with leading/trailing whitespace:")
+        for s, p, text in errors:
+            print(f"- Subject: {s}  Property: {p}  Value: {repr(text)}")
+        sys.exit(1)
+    print("PASS: No annotation values have leading/trailing whitespace.")
+    sys.exit(0)
+
+if __name__ == "__main__":
+    if len(sys.argv) != 2:
+        print("Usage: python check_no_extra_annotation_whitespace.py <ontology-file>")
+        sys.exit(2)
+    main(sys.argv[1])

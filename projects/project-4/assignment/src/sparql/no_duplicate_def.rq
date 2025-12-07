@@ -4,3 +4,45 @@
 #    No two ontology elements may have the exact same definition.    
 # Severity:
 #     Error 
+
+#!/usr/bin/env python3
+"""
+check_no_duplicate_definitions.py
+Error if two different subjects have identical definition literal text (same lexical form and language).
+Checks rdfs:comment, IAO_0000115, skos:definition, dcterms:description.
+"""
+import sys
+from rdflib import Graph, URIRef, RDFS, Literal
+
+DEFPROPS = [
+    RDFS.comment,
+    URIRef("http://purl.obolibrary.org/obo/IAO_0000115"),
+    URIRef("http://www.w3.org/2004/02/skos/core#definition"),
+    URIRef("http://purl.org/dc/terms/description"),
+]
+
+def main(path):
+    g = Graph()
+    g.parse(path)
+    text_map = {}  # (text, lang) -> set(subjects)
+    for p in DEFPROPS:
+        for s, o in g.subject_objects(p):
+            if isinstance(o, Literal):
+                key = (str(o), o.language)
+                text_map.setdefault(key, set()).add(s)
+    duplicates = [(k, v) for k, v in text_map.items() if len(v) > 1]
+    if duplicates:
+        print("ERROR: Duplicate definitions detected (identical definition string+lang used by multiple elements):")
+        for (text, lang), subjects in duplicates:
+            print(f"\nDefinition (lang={lang}): {repr(text)}")
+            for subj in subjects:
+                print(" -", subj)
+        sys.exit(1)
+    print("PASS: No duplicate definitions found.")
+    sys.exit(0)
+
+if __name__ == "__main__":
+    if len(sys.argv) != 2:
+        print("Usage: python check_no_duplicate_definitions.py <ontology-file>")
+        sys.exit(2)
+    main(sys.argv[1])
