@@ -5,95 +5,13 @@
 # Severity:  
 #    Error
 
-#!/usr/bin/env python3
-"""
-check_circularity_subclass_and_definitions.py
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
 
-Performs two ERROR checks:
-1) No cyclical definitions: a class's definition literal must not contain its own IRI.
-2) No circular subClassOf hierarchy: detect cycles in rdfs:subClassOf graph.
-
-Exit 1 if any error found.
-"""
-import sys
-from rdflib import Graph, RDF, RDFS, OWL, Literal, URIRef
-
-DEFPROPS = [
-    RDFS.comment,
-    URIRef("http://purl.obolibrary.org/obo/IAO_0000115"),
-    URIRef("http://www.w3.org/2004/02/skos/core#definition"),
-    URIRef("http://purl.org/dc/terms/description"),
-]
-
-def detect_self_referential_defs(g):
-    errors = []
-    classes = set(g.subjects(RDF.type, OWL.Class)) | set(g.subjects(RDF.type, RDFS.Class))
-    for c in classes:
-        cstr = str(c)
-        for p in DEFPROPS:
-            for o in g.objects(c, p):
-                if isinstance(o, Literal):
-                    if cstr in str(o):
-                        errors.append((c, p, o))
-    return errors
-
-def detect_subclass_cycles(g):
-    # Build adjacency list
-    adj = {}
-    classes = set(g.subjects(RDF.type, OWL.Class)) | set(g.subjects(RDF.type, RDFS.Class))
-    for c in classes:
-        adj[c] = set()
-    for s, o in g.triples((None, RDFS.subClassOf, None)):
-        if s not in adj:
-            adj[s] = set()
-        adj[s].add(o)
-    # DFS cycle detection
-    visited = {}
-    stack = []
-    cycles = []
-
-    def dfs(node):
-        visited[node] = 1  # visiting
-        stack.append(node)
-        for nbr in adj.get(node, []):
-            if visited.get(nbr, 0) == 0:
-                dfs(nbr)
-            elif visited.get(nbr) == 1:
-                # found cycle: record stack from nbr to end
-                try:
-                    idx = stack.index(nbr)
-                    cycle = stack[idx:] + [nbr]
-                except ValueError:
-                    cycle = stack + [nbr]
-                cycles.append(cycle)
-        visited[node] = 2
-        stack.pop()
-
-    for n in list(adj.keys()):
-        if visited.get(n, 0) == 0:
-            dfs(n)
-    return cycles
-
-def main(path):
-    g = Graph()
-    g.parse(path)
-    def_errors = detect_self_referential_defs(g)
-    cycles = detect_subclass_cycles(g)
-    if def_errors:
-        print("ERROR: Self-referential definitions found:")
-        for c,p,o in def_errors:
-            print(f"- Class {c} has definition (prop {p}) containing its own IRI: {o}")
-    if cycles:
-        print("\nERROR: SubClassOf cycles detected:")
-        for cyc in cycles:
-            print(" - Cycle: " + " -> ".join(map(str, cyc)))
-    if def_errors or cycles:
-        sys.exit(1)
-    print("PASS: No self-referential definitions and no SubClassOf cycles found.")
-    sys.exit(0)
-
-if __name__ == '__main__':
-    if len(sys.argv) != 2:
-        print("Usage: python check_circularity_subclass_and_definitions.py <ontology-file>")
-        sys.exit(2)
-    main(sys.argv[1])
+SELECT DISTINCT ?class ?error
+WHERE 
+{
+  ?class rdfs:subClassOf+ ?class .
+  FILTER (!ISBLANK (?class)) .
+  FILTER regex(str(?class), "http://www.ontologyrepository.com/CommonCoreOntologies/")
+  BIND (concat("ERROR: There is a subclass cycle around class ", str(?class)) AS ?error)
+}

@@ -5,41 +5,14 @@
 # Severity:
 #    Error 
 
-#!/usr/bin/env python3
-"""
-check_no_extra_annotation_whitespace.py
-Error if any rdfs:label, rdfs:comment, skos:definition, or IAO definition has leading/trailing whitespace.
-"""
-import sys
-from rdflib import Graph, Namespace, RDF, RDFS, URIRef, Literal
+PREFIX owl: <http://www.w3.org/2002/07/owl#>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
 
-DEFPROPS = [
-    RDFS.label,
-    RDFS.comment,
-    URIRef("http://purl.obolibrary.org/obo/IAO_0000115"),
-    URIRef("http://www.w3.org/2004/02/skos/core#definition"),
-    URIRef("http://purl.org/dc/terms/description"),
-]
-
-def main(path):
-    g = Graph()
-    g.parse(path)
-    errors = []
-    for s, p, o in g.triples((None, None, None)):
-        if p in DEFPROPS and isinstance(o, Literal) and o.datatype in (None,):
-            text = str(o)
-            if text != text.strip():
-                errors.append((s, p, text))
-    if errors:
-        print("ERROR: Found annotation values with leading/trailing whitespace:")
-        for s, p, text in errors:
-            print(f"- Subject: {s}  Property: {p}  Value: {repr(text)}")
-        sys.exit(1)
-    print("PASS: No annotation values have leading/trailing whitespace.")
-    sys.exit(0)
-
-if __name__ == "__main__":
-    if len(sys.argv) != 2:
-        print("Usage: python check_no_extra_annotation_whitespace.py <ontology-file>")
-        sys.exit(2)
-    main(sys.argv[1])
+SELECT DISTINCT ?element ?property ?value ?error
+WHERE {
+  ?property a owl:AnnotationProperty .
+  ?element ?property ?value .
+  FILTER (!isBlank(?element) && (REGEX(str(?value), "^[\\s\r\n]+") || REGEX(str(?value), "[\\s\r\n]+$")))
+  BIND (concat("ERROR: The following annotation value has leading or trailing whitespace ", str(?element)) AS ?error)
+}
+ORDER BY ?element

@@ -1,63 +1,18 @@
 # Title: 
-#    Definition Required
+#     Ontology Title Required
 # Constraint Description: 
-#    Any class or object property must have a non-empty definition with an English language tag.  
+#     Any owl:Ontology must have an rdfs:label.
 # Severity:
 #     Warning
 
-#!/usr/bin/env python3
-"""
-check_ontology_has_title.py
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+PREFIX owl: <http://www.w3.org/2002/07/owl#>
 
-ERROR if the ontology does not have a title.
-
-What counts as a title:
- - dcterms:title
- - dc:title
- - rdfs:label
-
-Ontology node is any subject with:
-   rdf:type owl:Ontology
-"""
-import sys
-from rdflib import Graph, RDF, RDFS, URIRef, Literal
-from rdflib.namespace import OWL, DC, DCTERMS
-
-TITLE_PROPS = [
-    DCTERMS.title,
-    DC.title,
-    RDFS.label,
-]
-
-def main(path):
-    g = Graph()
-    g.parse(path)
-
-    ontology_nodes = set(g.subjects(RDF.type, OWL.Ontology))
-
-    if not ontology_nodes:
-        print("ERROR: No ontology node found (no rdf:type owl:Ontology).")
-        sys.exit(1)
-
-    missing = []
-    for ont in ontology_nodes:
-        titles = []
-        for p in TITLE_PROPS:
-            for o in g.objects(ont, p):
-                if isinstance(o, Literal) and str(o).strip():
-                    titles.append(o)
-        if not titles:
-            missing.append(ont)
-
-    if missing:
-        print("ERROR: Ontology node(s) missing a title (dcterms:title, dc:title, or rdfs:label):")
-        for m in missing:
-            print(" -", m)
-        sys.exit(1)
-
-    print("PASS: Ontology has a title.")
-    sys.exit(0)
-
-
-if __name__ == "__main__":
-    if len(sys.argv) !=
+SELECT DISTINCT ?resource ?error
+WHERE
+{
+    ?resource a owl:Ontology .
+    FILTER (!ISBLANK (?resource)) .
+    FILTER NOT EXISTS {?resource rdfs:label ?title}
+    BIND (concat("WARNING: An rdfs:label is missing for ontology ", str(?resource)) AS ?error)
+}

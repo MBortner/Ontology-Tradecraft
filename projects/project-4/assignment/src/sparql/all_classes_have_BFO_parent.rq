@@ -5,64 +5,22 @@
 # Severity:
 #     Error
 
-from rdflib import Graph, RDF, RDFS, OWL, Namespace
+f# Title: 
+#    No CCO Class Should Be Outside the BFO Hierarchy
+# Constraint Description: 
+#     All CCO classes must have a BFO superclass.
+# Severity:
+#     Error
+# Author:
+#	 github.com/neilotte
 
-# BFO Namespace
-BFO = Namespace("http://purl.obolibrary.org/obo/BFO_")
+PREFIX owl: <http://www.w3.org/2002/07/owl#>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
 
-def class_is_bfo(uri):
-    return str(uri).startswith(str(BFO))
-
-def validate_bfo_superclasses(ontology_path):
-    g = Graph()
-    g.parse(ontology_path)
-
-    # All classes declared as owl:Class or rdfs:Class
-    classes = set(g.subjects(RDF.type, OWL.Class)) | set(g.subjects(RDF.type, RDFS.Class))
-
-    errors = []
-
-    for cls in classes:
-        # Get superclass axioms
-        superclasses = list(g.objects(cls, RDFS.subClassOf))
-
-        # If NO superclass present → error
-        if not superclasses:
-            errors.append(f"ERROR: Class {cls} has no superclass and violates BFO hierarchy.")
-            continue
-
-        # Check if ANY superclass is a BFO class
-        has_bfo_ancestor = any(class_is_bfo(parent) for parent in superclasses)
-
-        if not has_bfo_ancestor:
-            errors.append(
-                f"ERROR: Class {cls} does not inherit from a BFO superclass. "
-                f"Found parents: {superclasses}"
-            )
-
-    # Print report
-    if errors:
-        print("\n===== BFO Hierarchy Violations Detected =====\n")
-        for e in errors:
-            print(e)
-        print("\nValidation result: FAILED\n")
-        return False
-
-    print("\nValidation result: PASSED — All classes have BFO superclasses.\n")
-    return True
-
-
-if __name__ == "__main__":
-    import argparse
-    
-    parser = argparse.ArgumentParser(description="Check BFO hierarchy compliance.")
-    parser.add_argument("ontology", help="Path to ontology file (ttl, rdf/xml, etc.)")
-    
-    args = parser.parse_args()
-    
-    valid = validate_bfo_superclasses(args.ontology)
-    
-    # Exit code for CI/CD
-    if not valid:
-        exit(1)
-    exit(0)
+SELECT DISTINCT ?class ?label
+WHERE {
+?class a owl:Class .
+FILTER (regex(str(?class),"http://www.ontologyrepository.com/CommonCoreOntologies/"))
+FILTER NOT EXISTS {?class rdfs:subClassOf+ <http://purl.obolibrary.org/obo/BFO_0000001> }
+OPTIONAL {?class rdfs:label ?label}
+}

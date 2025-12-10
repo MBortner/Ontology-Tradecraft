@@ -25,36 +25,3 @@ WHERE {
   BIND (concat("WARNING: The following ontology elements have the same rdfs:label ", str(?element), " and ", str(?element2)) AS ?error)
 }
 ORDER BY DESC(UCASE(str(?label)))
-
-#!/usr/bin/env python3
-"""
-check_no_duplicate_labels.py
-Warn if two (distinct) non-blank subjects share identical rdfs:label literal (same lexical + lang).
-"""
-import sys
-from rdflib import Graph, RDFS, Literal
-
-def main(path):
-    g = Graph()
-    g.parse(path)
-    label_map = {}  # (text, lang) -> set(subjects)
-    for s, o in g.subject_objects(RDFS.label):
-        if isinstance(o, Literal):
-            key = (str(o), o.language)
-            label_map.setdefault(key, set()).add(s)
-    duplicates = [(k, v) for k, v in label_map.items() if len(v) > 1]
-    if duplicates:
-        print("WARNING: Duplicate rdfs:label values detected:")
-        for (text, lang), subjects in duplicates:
-            print(f"\nLabel (lang={lang}): {repr(text)}")
-            for subj in subjects:
-                print(" -", subj)
-    else:
-        print("PASS: No duplicate rdfs:label values found.")
-    sys.exit(0)
-
-if __name__ == "__main__":
-    if len(sys.argv) != 2:
-        print("Usage: python check_no_duplicate_labels.py <ontology-file>")
-        sys.exit(2)
-    main(sys.argv[1])
