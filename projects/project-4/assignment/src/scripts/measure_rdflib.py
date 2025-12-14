@@ -6,8 +6,12 @@ from dateutil import parser as dateparser
 import re
 from pathlib import Path
 
-# ---- Output Path ----
-output_file = Path("projects/project-4/assignment/src/measure_cco.ttl")
+# ---- Define paths relative to this script ----
+SCRIPT_DIR = Path(__file__).resolve().parent  # .../src/scripts
+SRC_DIR = SCRIPT_DIR.parent  # .../src
+
+csv_file = SRC_DIR / "data" / "readings_normalized.csv"
+output_file = SRC_DIR / "measure_cco.ttl"
 
 # ---- Namespaces ----
 EX = Namespace("http://example.org/")
@@ -16,7 +20,6 @@ BFO = Namespace("http://purl.obolibrary.org/obo/bfo.owl#")
 SKOS = Namespace("http://www.w3.org/2004/02/skos/core#")
 
 # ---- Load your measurement data from CSV ----
-csv_file = Path("projects/project-4/assignment/src/data/readings_normalized.csv")
 print(f"[measure_rdflib] Loading data from: {csv_file}")
 
 if not csv_file.exists():

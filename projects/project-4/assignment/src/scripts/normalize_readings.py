@@ -5,12 +5,15 @@ import datetime
 from dateutil import parser as dateparser
 from pathlib import Path
 
-# 2 Define input/output locations
-IN_A = Path("projects/project-4/assignment/src/data/sensor_A.csv")
-IN_B = Path("projects/project-4/assignment/src/data/sensor_B.json")
-IN_C = Path("projects/project-4/assignment/src/data/sensor_C.csv")
+# 2 Define input/output locations relative to this script
+SCRIPT_DIR = Path(__file__).resolve().parent  # .../src/scripts
+SRC_DIR = SCRIPT_DIR.parent  # .../src
 
-OUT = Path("projects/project-4/assignment/src/data/readings_normalized.csv")
+IN_A = SRC_DIR / "data" / "sensor_A.csv"
+IN_B = SRC_DIR / "data" / "sensor_B.json"
+IN_C = SRC_DIR / "data" / "sensor_C.csv"
+
+OUT = SRC_DIR / "data" / "readings_normalized.csv"
 
 
 # 3 Define helper functions
@@ -147,8 +150,7 @@ def normalize_and_clean(df):
 print("[normalize_readings] Loading sensor data...")
 df_a = load_sensor_a(IN_A)
 df_b = load_sensor_b(IN_B)
-df_c = load_sensor_a(IN_C)  
-# Sensor C uses same format as A
+df_c = load_sensor_a(IN_C)  # Sensor C uses same format as A
 
 print(f"[normalize_readings] Input A rows: {len(df_a)}")
 print(f"[normalize_readings] Input B rows: {len(df_b)}")
