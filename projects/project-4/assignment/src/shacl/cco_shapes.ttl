@@ -4,10 +4,10 @@
 @prefix sh:   <http://www.w3.org/ns/shacl#> .
 @prefix bfo:  <http://purl.obolibrary.org/obo/bfo.owl#> .
 @prefix cco:  <http://www.ontologyrepository.com/CommonCoreOntologies/> .
-@prefix ex:   <http://example.org/shapes/> .
+@prefix ex:   <http://example.org/> .
 
 #################################################################
-# 1) Artifact bears at least one SDC (cardinality); 
+# 1) Artifact bears at least one SDC (cardinality)
 #################################################################
 ex:ArtifactHasSDCShape
   a sh:NodeShape ;
@@ -21,30 +21,190 @@ ex:ArtifactHasSDCShape
   ] .
 
 #################################################################
-# 2) SDC is measured by at least one MICE (coverage via inverse) 
+# 2) SDC is measured by at least one MICE (coverage via inverse)
 #################################################################
+ex:SDCMeasuredByMICEShape
+  a sh:NodeShape ;
+  sh:targetClass cco:SpecificallyDependentContinuant ;
+  sh:property [
+    sh:path [ sh:inversePath cco:measures ] ;
+    sh:minCount 1 ;
+    sh:class cco:MeasurementInformationContentEntity ;
+    sh:message "Each SDC must be measured by at least one Measurement ICE (MICE)." ;
+    sh:severity sh:Violation
+  ] .
 
 #################################################################
 # 3) MICE measures exactly one SDC (functional)
 #################################################################
+ex:MICEMeasuresExactlyOneSDCShape
+  a sh:NodeShape ;
+  sh:targetClass cco:MeasurementInformationContentEntity ;
+  sh:property [
+    sh:path cco:measures ;
+    sh:minCount 1 ;
+    sh:maxCount 1 ;
+    sh:class cco:SpecificallyDependentContinuant ;
+    sh:message "A Measurement ICE must measure exactly one SDC (functional relationship)." ;
+    sh:severity sh:Violation
+  ] .
 
 #################################################################
 # 4) MICE must have one unit and one numeric value (completeness)
 #################################################################
+ex:MICEHasUnitAndNumericValue
+  a sh:NodeShape ;
+  sh:targetClass cco:MeasurementInformationContentEntity ;
+  sh:property [
+    sh:path cco:has_unit ;
+    sh:minCount 1 ;
+    sh:maxCount 1 ;
+    sh:class cco:MeasurementUnit ;
+    sh:message "Measurement ICE must have exactly one unit (cco:has_unit) that is a MeasurementUnit." ;
+    sh:severity sh:Violation
+  ] ;
+  sh:property [
+    sh:path cco:has_data_value ;
+    sh:minCount 1 ;
+    sh:maxCount 1 ;
+    sh:datatype xsd:decimal ;
+    sh:message "Measurement ICE must have exactly one numeric data value (cco:has_data_value as xsd:decimal)." ;
+    sh:severity sh:Violation
+  ] .
 
 #################################################################
-# 5) No empty values in literals
+# 5) No empty literal values  (RDFlib-Safe Final Version)
 #################################################################
+ex:NoEmptyLiteralValues
+  a sh:NodeShape ;
+  sh:targetSubjectsOf rdfs:label ;
+  sh:severity sh:Violation ;
+  sh:message "Literal values must not be empty or whitespace-only." ;
+  sh:sparql [
+    sh:prefixes (
+      [ sh:prefix "rdfs"; sh:namespace "http://www.w3.org/2000/01/rdf-schema#" ]
+      [ sh:prefix "cco";  sh:namespace "http://www.ontologyrepository.com/CommonCoreOntologies/" ]
+    ) ;
+    sh:select """SELECT $this ?prop ?val
+WHERE {
+  $this ?prop ?val .
+
+  FILTER(
+       ?prop = rdfs:label
+    || ?prop = rdfs:comment
+    || ?prop = cco:has_data_value
+  )
+
+  FILTER(isLiteral(?val))
+
+  BIND(REPLACE(STR(?val), "^\\\\s+|\\\\s+$", "") AS ?trimmed)
+
+  FILTER(STRLEN(?trimmed) = 0)
+}""" ;
+  ] .
 
 #################################################################
-# 6) Unit must match SDC being measured
+# 6) Unit must match SDC being measured  (FIXED)
 #################################################################
+ex:UnitMatchesSDCShape
+  a sh:NodeShape ;
+  sh:targetClass cco:MeasurementInformationContentEntity ;
+  sh:message "Unit used by the measurement must be compatible with the SDC kind measured." ;
+  sh:severity sh:Violation ;
+  sh:sparql [
+    sh:prefixes (
+      [ sh:prefix "cco";  sh:namespace "http://www.ontologyrepository.com/CommonCoreOntologies/" ]
+      [ sh:prefix "ex";   sh:namespace "http://example.org/" ]
+      [ sh:prefix "rdfs"; sh:namespace "http://www.w3.org/2000/01/rdf-schema#" ]
+    ) ;
+    sh:select """SELECT $this ?sdc ?unit ?sdcLabel
+WHERE {
+  $this cco:measures ?sdc .
+  $this cco:has_unit ?unit .
+  OPTIONAL { ?sdc rdfs:label ?sdcLabel . }
+  BIND(LCASE(STR(?sdcLabel)) AS ?lbl)
+
+  FILTER(
+      (CONTAINS(?lbl, "temperature") &&
+       !(
+            ?unit = ex:Unit_degC ||
+            ?unit = ex:Unit_degF
+        )
+      )
+   ||
+      (CONTAINS(?lbl, "pressure") &&
+       !(
+            ?unit = ex:Unit_kPa_gauge ||
+            ?unit = ex:Unit_kPa
+        )
+      )
+   ||
+      (CONTAINS(?lbl, "voltage") &&
+       !( ?unit = ex:Unit_V )
+      )
+   ||
+      (CONTAINS(?lbl, "resistance") &&
+       !(
+            ?unit = ex:Unit_ohm ||
+            ?unit = ex:Unit__
+        )
+      )
+  )
+}""" ;
+  ] .
+
 
 #################################################################
 # 7) No duplicate MICE
 #################################################################
+ex:NoDuplicateMICE
+  a sh:NodeShape ;
+  sh:targetClass cco:MeasurementInformationContentEntity ;
+  sh:message "Duplicate Measurement ICEs detected: two different MICE refer to the same SDC, same numeric value, same unit, and same timestamp." ;
+  sh:severity sh:Violation ;
+  sh:sparql [
+    sh:prefixes (
+      [ sh:prefix "cco"; sh:namespace "http://www.ontologyrepository.com/CommonCoreOntologies/" ]
+    ) ;
+    sh:select """SELECT ?m1 ?m2 ?sdc ?val ?unit ?t
+WHERE {
+  ?m1 a cco:MeasurementInformationContentEntity .
+  ?m2 a cco:MeasurementInformationContentEntity .
+  FILTER( ?m1 < ?m2 ) .
+  ?m1 cco:measures ?sdc .
+  ?m2 cco:measures ?sdc .
+  ?m1 cco:has_data_value ?val .
+  ?m2 cco:has_data_value ?val .
+  ?m1 cco:has_unit ?unit .
+  ?m2 cco:has_unit ?unit .
+  ?m1 cco:measurement_time ?t .
+  ?m2 cco:measurement_time ?t .
+}""" ;
+  ] .
 
 #################################################################
-# 8) No dangling/mistyped nodes 
+# 8) No dangling / mistyped nodes
 #################################################################
+ex:NoDanglingOrMistypedNodes
+  a sh:NodeShape ;
+  sh:targetSubjectsOf cco:has_unit ;
+  sh:message "Objects of cco:has_unit must be typed as cco:MeasurementUnit; objects of cco:measures should be typed as SDCs." ;
+  sh:severity sh:Violation ;
+  sh:sparql [
+    sh:prefixes (
+      [ sh:prefix "cco"; sh:namespace "http://www.ontologyrepository.com/CommonCoreOntologies/" ]
+    ) ;
+    sh:select """SELECT ?s ?unit ?unitType ?measurer ?sdc ?sdcType
+WHERE {
+  # unit objects lacking proper typing or wrong typing
+  ?s cco:has_unit ?unit .
+  OPTIONAL { ?unit a ?unitType . }
+  FILTER( !BOUND(?unitType) || ?unitType != cco:MeasurementUnit )
 
+  OPTIONAL {
+    ?measurer cco:measures ?sdc .
+    OPTIONAL { ?sdc a ?sdcType . }
+    FILTER( !BOUND(?sdcType) || ?sdcType != cco:SpecificallyDependentContinuant )
+  }
+}""" ;
+  ] .

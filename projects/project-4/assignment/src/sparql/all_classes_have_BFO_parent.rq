@@ -5,7 +5,7 @@
 # Severity:
 #     Error
 
-f# Title: 
+# Title: 
 #    No CCO Class Should Be Outside the BFO Hierarchy
 # Constraint Description: 
 #     All CCO classes must have a BFO superclass.
