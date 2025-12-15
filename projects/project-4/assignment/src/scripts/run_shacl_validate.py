@@ -15,7 +15,7 @@ def main():
     SRC_DIR = SCRIPT_DIR.parent
     
     DATA = SRC_DIR / "measure_cco.ttl"
-    SHAPES = SRC_DIR / "shacl" / "cco_shapes.ttl"  # Back to shacl subdirectory
+    SHAPES = SRC_DIR / "cco_shapes.ttl"  # Back to shacl subdirectory but ETL lives in src
 
     print("[shacl] DATA   :", DATA)
     print("[shacl] exists?:", DATA.exists())
