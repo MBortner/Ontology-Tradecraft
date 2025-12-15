@@ -111,12 +111,12 @@ def normalize_and_clean(df):
     # Timestamp conversion
     df["timestamp"] = df["timestamp"].apply(to_iso8601)
     
-    # Normalize units
+    # Normalize units to short, simple labels (per ETL guide)
     UNIT_MAP = {
-        "celsius": "degC", "°c": "degC", "c": "degC", "degc": "degC", "°C": "degC",
-        "fahrenheit": "degF", "f": "degF", "degf": "degF", "°f": "degF", "°F": "degF",
-        "pounds per square inch": "PSI_gauge", "psi": "PSI_gauge",
-        "kilopascal": "kPa_gauge", "kpa": "kPa_gauge", "KPA": "kPa_gauge", "kPa": "kPa_gauge",
+        "celsius": "C", "°c": "C", "c": "C", "degc": "C", "°C": "C",
+        "fahrenheit": "F", "f": "F", "degf": "F", "°f": "F", "°F": "F",
+        "pounds per square inch": "psi", "psi": "psi", "PSI": "psi",
+        "kilopascal": "kPa", "kpa": "kPa", "KPA": "kPa", "kPa": "kPa",
         "volt": "V", "volts": "V", "v": "V", "V": "V",
         "ohm": "Ω", "ohms": "Ω", "Ω": "Ω",
     }

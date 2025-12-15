@@ -136,15 +136,15 @@ WHERE {
   FILTER(
       (CONTAINS(?lbl, "temperature") &&
        !(
-            ?unit = ex:Unit_degC ||
-            ?unit = ex:Unit_degF
+            ?unit = ex:Unit_C ||
+            ?unit = ex:Unit_F
         )
       )
    ||
       (CONTAINS(?lbl, "pressure") &&
        !(
-            ?unit = ex:Unit_kPa_gauge ||
-            ?unit = ex:Unit_kPa
+            ?unit = ex:Unit_kPa ||
+            ?unit = ex:Unit_psi
         )
       )
    ||
@@ -153,10 +153,7 @@ WHERE {
       )
    ||
       (CONTAINS(?lbl, "resistance") &&
-       !(
-            ?unit = ex:Unit_ohm ||
-            ?unit = ex:Unit__
-        )
+       !( ?unit = ex:Unit_ohm )
       )
   )
 }""" ;

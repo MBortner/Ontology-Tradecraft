@@ -58,7 +58,9 @@ for idx, row in df.iterrows():
 
     artifact_id = clean(row["artifact_id"])
     quality_kind = clean(row["sdc_kind"])
-    unit = clean(row["unit_label"])
+    # Special handling for Ω symbol - normalize to "ohm" for URI
+    unit_raw = row["unit_label"]
+    unit = "ohm" if unit_raw == "Ω" else clean(unit_raw)
     value = float(row["value"])
     tstamp = dateparser.parse(row["timestamp"])
 
@@ -81,7 +83,7 @@ for idx, row in df.iterrows():
         g.add((quality_uri, RDFS.label, Literal(f"{row['artifact_id']} {quality_kind} quality")))
         qualities_seen.add(quality_uri)
 
-    # Measurement (MICE) - Use exact IRIs
+    # Measurement (MICE) - Use exact IRIs for core pattern, keep namespace for data properties
     g.add((measurement_uri, RDF.type, IRI_MICE))
     g.add((measurement_uri, RDFS.label, Literal(f"{row['artifact_id']} {quality_kind} measurement {idx}")))
     g.add((measurement_uri, IRI_IS_MEASURE_OF, quality_uri))
@@ -92,11 +94,12 @@ for idx, row in df.iterrows():
     g.add((measurement_uri, IRI_USES_MU, unit_uri))
     if (unit_uri, RDF.type, IRI_MU) not in g:
         g.add((unit_uri, RDF.type, IRI_MU))
-        # Add human-readable labels for units
+        # Add human-readable labels for units (short, simple per ETL guide)
         unit_labels = {
-            "degC": "degree Celsius",
-            "degF": "degree Fahrenheit",
-            "kPa_gauge": "kilopascal gauge",
+            "C": "degree Celsius",
+            "F": "degree Fahrenheit",
+            "kPa": "kilopascal",
+            "psi": "pounds per square inch",
             "V": "volt",
             "Ω": "ohm",
             "ohm": "ohm"
