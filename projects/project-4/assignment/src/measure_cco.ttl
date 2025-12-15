@@ -26,7 +26,7 @@ ex:Boiler-07_pressure_Measurement_1 a cco:ont00001163 ;
     rdfs:label "Boiler-07 pressure measurement 1" ;
     cco:has_data_value 101.325 ;
     cco:measurement_time "2024-03-17T23:04:00+00:00"^^xsd:dateTime ;
-    cco:ont00001863 ex:Unit_Pa ;
+    cco:ont00001863 ex:Unit_kPa ;
     cco:ont00001966 ex:Boiler-07_pressure_Quality .
 
 ex:Boiler-07_temperature_Measurement_0 a cco:ont00001163 ;
@@ -71,11 +71,11 @@ ex:Circuit-12_voltage_Measurement_5 a cco:ont00001163 ;
     cco:ont00001863 ex:Unit_V ;
     cco:ont00001966 ex:Circuit-12_voltage_Quality .
 
-ex:Unit_Pa a cco:ont00000120 ;
-    rdfs:label "Pa" .
-
 ex:Unit_V a cco:ont00000120 ;
     rdfs:label "volt" .
+
+ex:Unit_kPa a cco:ont00000120 ;
+    rdfs:label "kilopascal" .
 
 ex:Unit_ohm a cco:ont00000120 ;
     rdfs:label "ohm" .

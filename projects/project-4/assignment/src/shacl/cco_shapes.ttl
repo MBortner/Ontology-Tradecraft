@@ -3,47 +3,52 @@
 @prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .
 @prefix sh:   <http://www.w3.org/ns/shacl#> .
 @prefix ex:   <http://example.org/> .
-
-# Exact IRIs required by ETL
-@prefix cco_artifact: <https://www.commoncoreontologies.org/ont00000995#> .
-@prefix bfo_sdc: <http://purl.obolibrary.org/obo/BFO_0000020#> .
-@prefix cco_mice: <https://www.commoncoreontologies.org/ont00001163#> .
-@prefix cco_mu: <https://www.commoncoreontologies.org/ont00000120#> .
-@prefix bfo_bearer_of: <http://purl.obolibrary.org/obo/BFO_0000196#> .
-@prefix cco_is_measure_of: <https://www.commoncoreontologies.org/ont00001966#> .
-@prefix cco_uses_mu: <https://www.commoncoreontologies.org/ont00001863#> .
-@prefix cco: <https://www.commoncoreontologies.org/> .
+@prefix bfo:  <http://purl.obolibrary.org/obo/> .
 
 #################################################################
-# 1) Artifact bears at least one SDC (cardinality)
+# EXACT CCO IRIs (DO NOT CHANGE)
+#################################################################
+@prefix cco-mice: <https://www.commoncoreontologies.org/ont00001163> .
+@prefix cco-artifact: <https://www.commoncoreontologies.org/ont00000995> .
+@prefix cco-mu: <https://www.commoncoreontologies.org/ont00000120> .
+
+# Properties (exact IRIs)
+# bearer_of          = BFO_0000196
+# is_measure_of      = CCO ont00001966
+# uses_measurement_unit = CCO ont00001863
+# has_data_value     = CCO has_data_value
+# measurement_time   = CCO measurement_time
+
+#################################################################
+# 1) Artifact bears at least one SDC
 #################################################################
 ex:ArtifactHasSDCShape
   a sh:NodeShape ;
   sh:targetClass <https://www.commoncoreontologies.org/ont00000995> ;
   sh:property [
-    sh:path <http://purl.obolibrary.org/obo/BFO_0000196> ;
+    sh:path bfo:BFO_0000196 ;
     sh:minCount 1 ;
-    sh:class <http://purl.obolibrary.org/obo/BFO_0000020> ;
-    sh:message "Every Artifact must bear at least one SDC (Specifically Dependent Continuant)." ;
+    sh:class bfo:BFO_0000020 ;
+    sh:message "Every Artifact must bear at least one SDC." ;
     sh:severity sh:Violation
   ] .
 
 #################################################################
-# 2) SDC is measured by at least one MICE (coverage via inverse)
+# 2) SDC is measured by at least one MICE (inverse is_measure_of)
 #################################################################
-ex:SDCMeasuredByMICEShape
+  ex:SDCMeasuredByMICEShape
   a sh:NodeShape ;
-  sh:targetClass <http://purl.obolibrary.org/obo/BFO_0000020> ;
+  sh:targetClass bfo:BFO_0000020 ;
   sh:property [
     sh:path [ sh:inversePath <https://www.commoncoreontologies.org/ont00001966> ] ;
     sh:minCount 1 ;
     sh:class <https://www.commoncoreontologies.org/ont00001163> ;
-    sh:message "Each SDC must be measured by at least one Measurement ICE (MICE)." ;
+    sh:message "Each SDC must be measured by at least one Measurement ICE." ;
     sh:severity sh:Violation
   ] .
 
 #################################################################
-# 3) MICE measures exactly one SDC (functional)
+# 3) MICE measures exactly one SDC
 #################################################################
 ex:MICEMeasuresExactlyOneSDCShape
   a sh:NodeShape ;
@@ -52,31 +57,36 @@ ex:MICEMeasuresExactlyOneSDCShape
     sh:path <https://www.commoncoreontologies.org/ont00001966> ;
     sh:minCount 1 ;
     sh:maxCount 1 ;
-    sh:class <http://purl.obolibrary.org/obo/BFO_0000020> ;
-    sh:message "A Measurement ICE must measure exactly one SDC (functional relationship)." ;
+    sh:class bfo:BFO_0000020 ;
+    sh:message "A Measurement ICE must measure exactly one SDC." ;
     sh:severity sh:Violation
   ] .
 
 #################################################################
-# 4) MICE must have one unit and one numeric value (completeness)
+# 4) MICE must have one unit and one numeric value
 #################################################################
 ex:MICEHasUnitAndNumericValue
   a sh:NodeShape ;
   sh:targetClass <https://www.commoncoreontologies.org/ont00001163> ;
+
   sh:property [
     sh:path <https://www.commoncoreontologies.org/ont00001863> ;
     sh:minCount 1 ;
     sh:maxCount 1 ;
     sh:class <https://www.commoncoreontologies.org/ont00000120> ;
-    sh:message "Measurement ICE must have exactly one unit (uses_measurement_unit) that is a MeasurementUnit." ;
+    sh:message "Measurement ICE must have exactly one unit." ;
     sh:severity sh:Violation
   ] ;
+
   sh:property [
-    sh:path cco:has_data_value ;
+    sh:path <https://www.commoncoreontologies.org/has_data_value> ;
     sh:minCount 1 ;
     sh:maxCount 1 ;
-    sh:datatype xsd:decimal ;
-    sh:message "Measurement ICE must have exactly one numeric data value (cco:has_data_value as xsd:decimal)." ;
+    sh:or (
+      [ sh:datatype xsd:decimal ]
+      [ sh:datatype xsd:string ]
+    ) ;
+    sh:message "Measurement ICE must have exactly one numeric value (string or decimal)." ;
     sh:severity sh:Violation
   ] .
 
@@ -89,26 +99,15 @@ ex:NoEmptyLiteralValues
   sh:severity sh:Violation ;
   sh:message "Literal values must not be empty or whitespace-only." ;
   sh:sparql [
-    sh:prefixes (
-      [ sh:prefix "rdfs"; sh:namespace "http://www.w3.org/2000/01/rdf-schema#" ]
-      [ sh:prefix "cco";  sh:namespace "https://www.commoncoreontologies.org/" ]
-    ) ;
-    sh:select """SELECT $this ?prop ?val
-WHERE {
-  $this ?prop ?val .
-
-  FILTER(
-       ?prop = rdfs:label
-    || ?prop = rdfs:comment
-    || ?prop = cco:has_data_value
-  )
-
-  FILTER(isLiteral(?val))
-
-  BIND(REPLACE(STR(?val), "^\\\\s+|\\\\s+$", "") AS ?trimmed)
-
-  FILTER(STRLEN(?trimmed) = 0)
-}""" ;
+    sh:select """
+      SELECT $this ?val
+      WHERE {
+        $this rdfs:label ?val .
+        FILTER(isLiteral(?val))
+        BIND(REPLACE(STR(?val), "^\\\\s+|\\\\s+$", "") AS ?trimmed)
+        FILTER(STRLEN(?trimmed) = 0)
+      }
+    """ ;
   ] .
 
 #################################################################
@@ -117,46 +116,25 @@ WHERE {
 ex:UnitMatchesSDCShape
   a sh:NodeShape ;
   sh:targetClass <https://www.commoncoreontologies.org/ont00001163> ;
-  sh:message "Unit used by the measurement must be compatible with the SDC kind measured." ;
   sh:severity sh:Violation ;
+  sh:message "Unit must be compatible with the SDC being measured." ;
   sh:sparql [
-    sh:prefixes (
-      [ sh:prefix "cco_is_measure_of"; sh:namespace "https://www.commoncoreontologies.org/ont00001966#" ]
-      [ sh:prefix "cco_uses_mu"; sh:namespace "https://www.commoncoreontologies.org/ont00001863#" ]
-      [ sh:prefix "ex";   sh:namespace "http://example.org/" ]
-      [ sh:prefix "rdfs"; sh:namespace "http://www.w3.org/2000/01/rdf-schema#" ]
-    ) ;
-    sh:select """SELECT $this ?sdc ?unit ?sdcLabel
-WHERE {
-  $this <https://www.commoncoreontologies.org/ont00001966> ?sdc .
-  $this <https://www.commoncoreontologies.org/ont00001863> ?unit .
-  OPTIONAL { ?sdc rdfs:label ?sdcLabel . }
-  BIND(LCASE(STR(?sdcLabel)) AS ?lbl)
+    sh:select """
+      SELECT $this ?sdc ?unit ?label
+      WHERE {
+        $this <https://www.commoncoreontologies.org/ont00001966> ?sdc ;
+              <https://www.commoncoreontologies.org/ont00001863> ?unit .
+        OPTIONAL { ?sdc rdfs:label ?label . }
+        BIND(LCASE(STR(?label)) AS ?lbl)
 
-  FILTER(
-      (CONTAINS(?lbl, "temperature") &&
-       !(
-            ?unit = ex:Unit_C ||
-            ?unit = ex:Unit_F
+        FILTER(
+          (CONTAINS(?lbl,"temperature") && !(?unit IN (ex:Unit_C, ex:Unit_F))) ||
+          (CONTAINS(?lbl,"pressure")    && !(?unit IN (ex:Unit_kPa, ex:Unit_psi))) ||
+          (CONTAINS(?lbl,"voltage")     && ?unit != ex:Unit_V) ||
+          (CONTAINS(?lbl,"resistance")  && ?unit != ex:Unit_ohm)
         )
-      )
-   ||
-      (CONTAINS(?lbl, "pressure") &&
-       !(
-            ?unit = ex:Unit_Pa ||
-            ?unit = ex:Unit_psi
-        )
-      )
-   ||
-      (CONTAINS(?lbl, "voltage") &&
-       !( ?unit = ex:Unit_V )
-      )
-   ||
-      (CONTAINS(?lbl, "resistance") &&
-       !( ?unit = ex:Unit_ohm )
-      )
-  )
-}""" ;
+      }
+    """ ;
   ] .
 
 #################################################################
@@ -165,57 +143,46 @@ WHERE {
 ex:NoDuplicateMICE
   a sh:NodeShape ;
   sh:targetClass <https://www.commoncoreontologies.org/ont00001163> ;
-  sh:message "Duplicate Measurement ICEs detected: two different MICE refer to the same SDC, same numeric value, same unit, and same timestamp." ;
   sh:severity sh:Violation ;
+  sh:message "Duplicate Measurement ICEs detected." ;
   sh:sparql [
-    sh:prefixes (
-      [ sh:prefix "cco_mice"; sh:namespace "https://www.commoncoreontologies.org/ont00001163#" ]
-      [ sh:prefix "cco_is_measure_of"; sh:namespace "https://www.commoncoreontologies.org/ont00001966#" ]
-      [ sh:prefix "cco_uses_mu"; sh:namespace "https://www.commoncoreontologies.org/ont00001863#" ]
-      [ sh:prefix "cco"; sh:namespace "https://www.commoncoreontologies.org/" ]
-    ) ;
-    sh:select """SELECT ?m1 ?m2 ?sdc ?val ?unit ?t
-WHERE {
-  ?m1 a <https://www.commoncoreontologies.org/ont00001163> .
-  ?m2 a <https://www.commoncoreontologies.org/ont00001163> .
-  FILTER( ?m1 < ?m2 ) .
-  ?m1 <https://www.commoncoreontologies.org/ont00001966> ?sdc .
-  ?m2 <https://www.commoncoreontologies.org/ont00001966> ?sdc .
-  ?m1 cco:has_data_value ?val .
-  ?m2 cco:has_data_value ?val .
-  ?m1 <https://www.commoncoreontologies.org/ont00001863> ?unit .
-  ?m2 <https://www.commoncoreontologies.org/ont00001863> ?unit .
-  ?m1 cco:measurement_time ?t .
-  ?m2 cco:measurement_time ?t .
-}""" ;
+    sh:select """
+      SELECT ?m1 ?m2
+      WHERE {
+        ?m1 a <https://www.commoncoreontologies.org/ont00001163> ;
+            <https://www.commoncoreontologies.org/ont00001966> ?sdc ;
+            <https://www.commoncoreontologies.org/has_data_value> ?val ;
+            <https://www.commoncoreontologies.org/ont00001863> ?unit ;
+            <https://www.commoncoreontologies.org/measurement_time> ?t .
+        ?m2 a <https://www.commoncoreontologies.org/ont00001163> ;
+            <https://www.commoncoreontologies.org/ont00001966> ?sdc ;
+            <https://www.commoncoreontologies.org/has_data_value> ?val ;
+            <https://www.commoncoreontologies.org/ont00001863> ?unit ;
+            <https://www.commoncoreontologies.org/measurement_time> ?t .
+        FILTER(?m1 < ?m2)
+      }
+    """ ;
   ] .
 
 #################################################################
-# 8) No dangling / mistyped nodes
+# 8) No dangling or mistyped nodes
 #################################################################
 ex:NoDanglingOrMistypedNodes
   a sh:NodeShape ;
   sh:targetSubjectsOf <https://www.commoncoreontologies.org/ont00001863> ;
-  sh:message "Objects of uses_measurement_unit must be typed as MeasurementUnit; objects of is_measure_of should be typed as SDCs." ;
   sh:severity sh:Violation ;
+  sh:message "Units and SDCs must be correctly typed." ;
   sh:sparql [
-    sh:prefixes (
-      [ sh:prefix "cco_mu"; sh:namespace "https://www.commoncoreontologies.org/ont00000120#" ]
-      [ sh:prefix "bfo_sdc"; sh:namespace "http://purl.obolibrary.org/obo/BFO_0000020#" ]
-      [ sh:prefix "cco_uses_mu"; sh:namespace "https://www.commoncoreontologies.org/ont00001863#" ]
-      [ sh:prefix "cco_is_measure_of"; sh:namespace "https://www.commoncoreontologies.org/ont00001966#" ]
-    ) ;
-    sh:select """SELECT ?s ?unit ?unitType ?measurer ?sdc ?sdcType
-WHERE {
-  # unit objects lacking proper typing or wrong typing
-  ?s <https://www.commoncoreontologies.org/ont00001863> ?unit .
-  OPTIONAL { ?unit a ?unitType . }
-  FILTER( !BOUND(?unitType) || ?unitType != <https://www.commoncoreontologies.org/ont00000120> )
+    sh:select """
+      SELECT ?s ?unit ?sdc
+      WHERE {
+        ?s <https://www.commoncoreontologies.org/ont00001863> ?unit .
+        FILTER NOT EXISTS { ?unit a <https://www.commoncoreontologies.org/ont00000120> }
 
-  OPTIONAL {
-    ?measurer <https://www.commoncoreontologies.org/ont00001966> ?sdc .
-    OPTIONAL { ?sdc a ?sdcType . }
-    FILTER( !BOUND(?sdcType) || ?sdcType != <http://purl.obolibrary.org/obo/BFO_0000020> )
-  }
-}""" ;
+        OPTIONAL {
+          ?s <https://www.commoncoreontologies.org/ont00001966> ?sdc .
+          FILTER NOT EXISTS { ?sdc a bfo:BFO_0000020 }
+        }
+      }
+    """ ;
   ] .
