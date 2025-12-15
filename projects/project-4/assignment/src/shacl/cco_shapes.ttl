@@ -143,7 +143,7 @@ WHERE {
    ||
       (CONTAINS(?lbl, "pressure") &&
        !(
-            ?unit = ex:Unit_kPa ||
+            ?unit = ex:Unit_Pa ||
             ?unit = ex:Unit_psi
         )
       )

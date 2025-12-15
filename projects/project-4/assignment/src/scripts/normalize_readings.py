@@ -116,7 +116,7 @@ def normalize_and_clean(df):
         "celsius": "C", "°c": "C", "c": "C", "degc": "C", "°C": "C",
         "fahrenheit": "F", "f": "F", "degf": "F", "°f": "F", "°F": "F",
         "pounds per square inch": "psi", "psi": "psi", "PSI": "psi",
-        "kilopascal": "kPa", "kpa": "kPa", "KPA": "kPa", "kPa": "kPa",
+        "kilopascal": "Pa", "kpa": "Pa", "KPA": "Pa", "kPa": "Pa",
         "volt": "V", "volts": "V", "v": "V", "V": "V",
         "ohm": "Ω", "ohms": "Ω", "Ω": "Ω",
     }
